@@ -2,8 +2,13 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import mermaid from 'mermaid';
 import { useVisualizationStore } from '../store/useVisualizationStore';
 
-const toEntityName = (name) => String(name || '').replace(/[^a-zA-Z0-9_]/g, '_');
-const cleanLabel = (value) => String(value || 'relates_to').replace(/"/g, "'").replace(/\n/g, ' ').trim();
+const toEntityName = (name) => {
+  let cleaned = String(name || 'Unknown').replace(/[^a-zA-Z0-9_]/g, '_');
+  // Mermaid ER entities shouldn't start with a number directly if possible, though mostly okay.
+  if (/^[0-9]/.test(cleaned)) cleaned = 'E_' + cleaned;
+  return cleaned;
+};
+const cleanLabel = (value) => String(value || 'relates_to').replace(/"/g, "'").replace(/\n/g, ' ').trim() || 'relates_to';
 
 const MermaidER = ({ erDefinition }) => {
   const containerRef = useRef(null);
@@ -13,6 +18,7 @@ const MermaidER = ({ erDefinition }) => {
       startOnLoad: false,
       theme: 'dark',
       securityLevel: 'loose',
+      suppressErrorRendering: true,
       themeVariables: {
         darkMode: true,
         background: '#080c14',
@@ -30,7 +36,7 @@ const MermaidER = ({ erDefinition }) => {
 
   useEffect(() => {
     if (erDefinition && containerRef.current) {
-      const renderId = `er-diagram-svg-${Date.now()}`;
+      const renderId = `er-${Date.now()}`;
       mermaid.render(renderId, erDefinition).then((result) => {
         containerRef.current.innerHTML = result.svg;
         const svgElement = containerRef.current.querySelector('svg');
@@ -41,8 +47,11 @@ const MermaidER = ({ erDefinition }) => {
           svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         }
       }).catch(err => {
-        console.error("Mermaid parsing error: ", err);
-        containerRef.current.innerHTML = '<div class="text-xs text-[var(--warning)]">Unable to render ER diagram from current relationship payload.</div>';
+        console.error("Mermaid parsing error: ", err, erDefinition);
+        containerRef.current.innerHTML = `<div class="p-4 text-xs text-[var(--warning)] max-h-[300px] overflow-auto">
+          <b>Unable to render ER diagram. Syntax error in:</b>
+          <pre class="mt-2 text-[10px] text-white/50 whitespace-pre-wrap">${erDefinition}</pre>
+        </div>`;
       });
     }
   }, [erDefinition]);
@@ -59,16 +68,25 @@ export default function ERDiagram2D() {
     // Output all tables with their columns (especially PKs/FKs)
     tables.forEach(table => {
       const entityName = toEntityName(table.id || table.name);
-      definition += `  ${entityName} {\n`;
-      (table.columns || []).forEach(col => {
-        const type = String(col.type || 'string').replace(/[^a-zA-Z0-9_]/g, '');
-        const colName = String(col.name || '').replace(/[^a-zA-Z0-9_]/g, '');
-        let keys = '';
-        if (col.is_pk || col.is_primary_key) keys += ' PK';
-        if (col.is_fk || col.is_foreign_key) keys += ' FK';
-        definition += `    ${type} ${colName}${keys}\n`;
-      });
-      definition += `  }\n`;
+      
+      if (!table.columns || table.columns.length === 0) {
+        definition += `  ${entityName} {\n    string id\n  }\n`;
+      } else {
+        definition += `  ${entityName} {\n`;
+        table.columns.forEach(col => {
+          let type = String(col.type || 'string').replace(/[^a-zA-Z0-9_]/g, '');
+          if (!type) type = 'string';
+          let colName = String(col.name || 'col').replace(/[^a-zA-Z0-9_]/g, '');
+          if (!colName) colName = 'col';
+          
+          let keys = [];
+          if (col.is_pk || col.is_primary_key) keys.push('PK');
+          if (col.is_fk || col.is_foreign_key) keys.push('FK');
+          const keysStr = keys.length ? ` ${keys.join(', ')}` : '';
+          definition += `    ${type} ${colName}${keysStr}\n`;
+        });
+        definition += `  }\n`;
+      }
     });
 
     // Output all relationships
