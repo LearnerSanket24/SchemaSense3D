@@ -890,7 +890,6 @@ export default function DictionaryScreen() {
                           <tr className="h-9 bg-[var(--bg-elevated)] text-xs uppercase tracking-[0.12em] text-[var(--text-muted)]">
                             <th className="px-4 text-left">Name</th>
                             <th className="px-4 text-left">Type</th>
-                            <th className="px-4 text-left">AI Description</th>
                             <th className="px-4 text-left">Null%</th>
                             <th className="px-4 text-left">Flags</th>
                           </tr>
@@ -937,15 +936,6 @@ export default function DictionaryScreen() {
                                   >
                                     {type}
                                   </span>
-                                </td>
-                                <td className="max-w-[260px] px-4 text-xs text-[var(--text-secondary)]">
-                                  {description ? (
-                                    <span className="block truncate" title={description}>
-                                      {description}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block h-2.5 w-28 rounded skeleton bg-[var(--bg-overlay)]" />
-                                  )}
                                 </td>
                                 <td className="px-4">
                                   <div className="w-20">

@@ -8,6 +8,10 @@ export const useAppStore = create((set) => ({
     localStorage.setItem("currentScreen", screen)
   },
 
+  // User context
+  userContext: '',
+  setUserContext: (ctx) => set({ userContext: ctx }),
+
   // Upload state
   uploadedFiles: [],
   setUploadedFiles: (files) => set({ uploadedFiles: files }),

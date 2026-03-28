@@ -1,17 +1,10 @@
-import axios from "axios"
+import API from "./axios"
 
-const DEFAULT_TIMEOUT_MS = 12_000
 const INGEST_CLEAR_TIMEOUT_MS = 60_000
 const INGEST_UPLOAD_TIMEOUT_MS = 300_000
 const SCHEMA_TIMEOUT_MS = 45_000
-
-const API = axios.create({
-  baseURL: "https://olivaceous-shaunte-indeterminedly.ngrok-free.dev",
-  timeout: DEFAULT_TIMEOUT_MS,
-})
-
-// 🔥 IMPORTANT FIX FOR NGROK
-API.defaults.headers["ngrok-skip-browser-warning"] = "true"
+const ANALYSIS_TIMEOUT_MS = 45_000
+const SUMMARY_TIMEOUT_MS = 30_000
 
 export default API
 
@@ -38,6 +31,60 @@ async function getAuthTokenWithTimeout() {
     console.warn("Failed to retrieve Clerk token for API request", err)
     return null
   }
+}
+
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504])
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+export function isRetryableRequestError(error) {
+  const status = error?.response?.status
+  const code = error?.code
+
+  if (code === "ECONNABORTED") return true
+  if (code === "ERR_NETWORK") return true
+  if (code === "ECONNRESET") return true
+
+  if (status && RETRYABLE_STATUS_CODES.has(status)) {
+    return true
+  }
+
+  return false
+}
+
+export async function requestWithRetry(
+  requestFactory,
+  {
+    retries = 2,
+    baseDelayMs = 600,
+    shouldRetry = isRetryableRequestError,
+  } = {}
+) {
+  let attempt = 0
+  let lastError = null
+
+  while (attempt <= retries) {
+    try {
+      return await requestFactory()
+    } catch (error) {
+      lastError = error
+
+      const canRetry = attempt < retries && shouldRetry(error)
+      if (!canRetry) {
+        throw error
+      }
+
+      const delayMs = baseDelayMs * Math.pow(2, attempt)
+      await wait(delayMs)
+      attempt += 1
+    }
+  }
+
+  throw lastError
 }
 
 API.interceptors.request.use(async (config) => {
@@ -95,7 +142,16 @@ export const bustSchemaCache = () => {
 
 export const getQuality = () => API.get(`/quality?t=${Date.now()}`)
 export const getTableQuality = (tableName) => API.get(`/quality/${tableName}?t=${Date.now()}`)
-export const getTableAnalysis = (tableName) => API.get(`/analysis/${encodeURIComponent(tableName)}?t=${Date.now()}`)
+export const getTableAnalysis = (tableName, config = {}) =>
+  API.get(`/analysis/${encodeURIComponent(tableName)}?t=${Date.now()}`, {
+    timeout: ANALYSIS_TIMEOUT_MS,
+    ...config,
+  })
+export const getSummaryNarrative = (payload = {}, config = {}) =>
+  API.post("/generate-summary", payload, {
+    timeout: SUMMARY_TIMEOUT_MS,
+    ...config,
+  })
 export const getRelationships = () => API.get(`/relationships?t=${Date.now()}`)
 export const getGraphData = (payload = {}) => API.post("/graph-data", payload)
 export const postQuery = (query) => API.post("/query", { query })

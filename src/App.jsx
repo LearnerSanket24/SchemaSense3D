@@ -5,27 +5,29 @@ import { setTokenGetter } from "./api/api"
 
 import UploadScreen from "./screens/UploadScreen"
 import DictionaryScreen from "./screens/DictionaryScreen"
-import ChatScreen from "./screens/ChatScreen"
 import QualityScreen from "./screens/QualityScreen"
 import Visualization3D from "./screens/Visualization3D"
 import AnalysisScreen from "./screens/AnalysisScreen"
 import SignInScreen from "./screens/SignInScreen"
 import SignUpScreen from "./screens/SignUpScreen"
 import LandingPage from "./screens/LandingPage"
+import DashboardScreen from "./screens/DashboardScreen"
+import AIAssistantModal from "./components/AIAssistantModal"
+import { useAppStore } from "./store/useAppStore"
 import {
   BarChart2,
   BookOpen,
   GitBranch,
-  MessageSquare,
+  Home,
   Settings,
   ShieldCheck,
   UploadCloud,
 } from "lucide-react"
 
 const SIDEBAR_ITEMS = [
+  { label: "Dashboard", to: "/dashboard", icon: Home },
   { label: "Upload", to: "/upload", icon: UploadCloud },
   { label: "Dictionary", to: "/dictionary", icon: BookOpen },
-  { label: "Chat", to: "/chat", icon: MessageSquare },
   { label: "Visualization", to: "/visualization", icon: GitBranch },
   { label: "Quality", to: "/quality", icon: ShieldCheck },
   { label: "Analysis", to: "/analysis", icon: BarChart2 },
@@ -61,8 +63,21 @@ function SidebarNavItem({ label, to, icon: Icon }) {
 }
 
 function MainLayout({ children }) {
+  const schemaData = useAppStore((state) => state.schema)
+  const schemaContextString = schemaData?.tables?.map((t) => t.name).join(', ') ?? ''
+  const globalError = useAppStore((state) => state.error)
+  const clearError = useAppStore((state) => state.clearError)
+
   return (
     <div className="min-h-screen bg-[var(--bg-void)] text-[var(--text-primary)]">
+      {globalError && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 rounded-md bg-[var(--danger)] px-4 py-2 text-[var(--text-primary)] shadow-lg animate-fade-in">
+          <span>{globalError}</span>
+          <button onClick={clearError} className="text-[var(--text-primary)] hover:opacity-80">
+            ✕
+          </button>
+        </div>
+      )}
       <aside className="fixed left-0 top-0 z-40 flex h-screen w-16 flex-col items-center justify-between border-r border-[var(--border-default)] bg-[var(--bg-surface)] py-4">
         <div className="flex w-full flex-col items-center gap-5">
           <div className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-elevated)]">
@@ -111,6 +126,7 @@ function MainLayout({ children }) {
       <main className="ml-16 min-h-screen bg-[var(--bg-base)]">
         {children}
       </main>
+      <AIAssistantModal schemaContext={schemaContextString} />
     </div>
   )
 }
@@ -146,9 +162,9 @@ export default function App() {
       <Route path="/sign-up/*" element={<SignUpScreen />} />
 
       {/* Protected UI Routes */}
-      <Route path="/upload" element={<ProtectedRoute><UploadScreen onContinue={() => navigate('/dictionary')} /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardScreen /></ProtectedRoute>} />
+      <Route path="/upload" element={<ProtectedRoute><UploadScreen onContinue={() => navigate('/dashboard')} /></ProtectedRoute>} />
       <Route path="/dictionary" element={<ProtectedRoute><DictionaryScreen /></ProtectedRoute>} />
-      <Route path="/chat" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
       <Route path="/visualization" element={<ProtectedRoute><Visualization3D /></ProtectedRoute>} />
       <Route path="/quality" element={<ProtectedRoute><QualityScreen /></ProtectedRoute>} />
       <Route path="/analysis" element={<ProtectedRoute><AnalysisScreen /></ProtectedRoute>} />

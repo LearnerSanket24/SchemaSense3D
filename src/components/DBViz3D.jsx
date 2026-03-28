@@ -19,7 +19,7 @@ function getQualityColor(score) {
   return "#ef4444"
 }
 
-export default function DBViz3D() {
+export default function DBViz3D({ miniMode = false }) {
   const fgRef = useRef(null)
   const { tables, relationships, setSelectedNode, visualMode, queriedTables } = useVisualizationStore()
 
@@ -31,7 +31,7 @@ export default function DBViz3D() {
       columns: t.columns,
       qualityScore: t.qualityScore,
       group: t.group,
-      val: Math.max(Math.cbrt(t.rows || 1) * 0.5, 2),
+      val: Math.max(Math.cbrt(t.rows || 1) * (miniMode ? 0.3 : 0.5), miniMode ? 1.5 : 2),
       idx,
     }))
 
@@ -88,22 +88,25 @@ export default function DBViz3D() {
   }
 
   return (
-    <div className="absolute inset-0">
+    <div className={miniMode ? "absolute inset-0 pointer-events-none" : "absolute inset-0"}>
       <ForceGraph3D
         ref={fgRef}
         graphData={graphData}
         backgroundColor="rgba(0,0,0,0)"
         showNavInfo={false}
-        cooldownTicks={90}
+        enableNodeDrag={!miniMode}
+        enableNavigationControls={!miniMode}
+        cooldownTicks={miniMode ? 40 : 90}
         nodeColor={nodeColor}
         nodeVal={(n) => {
           const queried = queriedTables.includes(String(n.id || "").toLowerCase())
-          return queried && visualMode === "ai-query" ? n.val * 2.5 : n.val * 2
+          let val = queried && visualMode === "ai-query" ? n.val * 2.5 : n.val * 2
+          return miniMode ? val * 0.5 : val // Shrink dynamically for mini view
         }}
-        nodeResolution={32}
+        nodeResolution={miniMode ? 16 : 32}
         nodeOpacity={1}
         linkOpacity={0.65}
-        nodeLabel={(node) => {
+        nodeLabel={miniMode ? () => "" : (node) => {
           const quality = Math.round(node.qualityScore || 0)
           return "<div style=\"padding:8px;background:#111827;border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#f8fafc;font-family:Inter,sans-serif\"><b>" + node.name + "</b><br/>Rows: " + (node.rows || 0).toLocaleString() + "<br/>Quality: " + quality + "%</div>"
         }}
@@ -112,15 +115,15 @@ export default function DBViz3D() {
             ? 'rgba(148, 163, 184, 0.4)' 
             : 'rgba(56, 189, 248, 0.75)' // More vibrant light blue for explicit links
         }
-        linkWidth={(link) => (link.type === 'implicit' ? 1.5 : 2.5)}
-        linkDirectionalParticles={(link) => (link.type === 'implicit' ? 2 : 5)}
-        linkDirectionalParticleWidth={(link) => (link.type === 'implicit' ? 1.5 : 3.5)}
-        linkDirectionalParticleResolution={16}
+        linkWidth={(link) => (link.type === 'implicit' ? (miniMode ? 0.5 : 1.5) : (miniMode ? 1 : 2.5))}
+        linkDirectionalParticles={(link) => (link.type === 'implicit' ? (miniMode ? 0 : 2) : (miniMode ? 2 : 5))}
+        linkDirectionalParticleWidth={(link) => (link.type === 'implicit' ? 1.5 : (miniMode ? 2 : 3.5))}
+        linkDirectionalParticleResolution={miniMode ? 8 : 16}
         linkDirectionalParticleSpeed={(link) => (link.type === 'implicit' ? 0.005 : 0.015)}
         linkDirectionalParticleColor={(link) => 
             link.type === 'implicit' ? '#cbd5e1' : '#38bdf8'
         }
-        onNodeClick={(node) => {
+        onNodeClick={miniMode ? undefined : (node) => {
           const picked = tables.find((t) => t.id === node.id)
           if (picked) setSelectedNode(picked)
 

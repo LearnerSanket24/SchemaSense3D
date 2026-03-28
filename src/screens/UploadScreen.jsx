@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import { bustSchemaCache, getSchema, uploadFile, clearDatabase } from "../api/api"
 import { AnimatePresence, motion } from "framer-motion"
+import { useAppStore } from "../store/useAppStore"
 import {
   AlertCircle,
   AlertTriangle,
@@ -82,6 +83,7 @@ function withTimeout(promise, timeoutMs, timeoutMessage = "Request timed out") {
 }
 
 export default function UploadScreen({ onContinue }) {
+  const { setUserContext, userContext } = useAppStore();
   const [fileName, setFileName] = useState("")
   const [fileCount, setFileCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -421,6 +423,26 @@ export default function UploadScreen({ onContinue }) {
               Start with a sample dataset
             </span>
             <hr className="flex-1 border-0 border-t border-[var(--border-default)]" />
+          </div>
+
+          
+          {/* USER CONTEXT FIELD */}
+          <div className="w-full relative mt-6 mb-2 text-left z-10">
+            <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">
+              What is this data for? (Optional context for AI)
+            </label>
+            <textarea
+              placeholder="E.g., I am analyzing e-commerce transactions for Q3 to spot churn patterns..."
+              className="w-full bg-[var(--bg-surface)] border border-[var(--border-light)] rounded-xl p-3 text-[var(--text-primary)] text-sm focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] min-h-[80px] resize-none pb-8"
+              value={userContext || ""}
+              onChange={(e) => setUserContext(e.target.value)}
+            />
+            <button 
+              className="absolute bottom-3 right-3 text-xs bg-[var(--bg-surface-hover)] hover:bg-[var(--accent-primary)] hover:text-white px-2 py-1 rounded-md transition-colors text-[var(--text-tertiary)]"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setUserContext("I want to understand the relationship between order volumes, shipping delays, and overall customer satisfaction scores over the last 6 months."); }}
+            >
+              Auto-fill example
+            </button>
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
