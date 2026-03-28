@@ -68,9 +68,12 @@ export default function ParticleNetwork({
         p.x += p.vx;
         p.y += p.vy;
 
-        // Bounce off walls
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
+        // Bounce off walls and clamp to avoid getting stuck outside
+        if (p.x < 0) { p.x = 0; p.vx *= -1; }
+        else if (p.x > width) { p.x = width; p.vx *= -1; }
+        
+        if (p.y < 0) { p.y = 0; p.vy *= -1; }
+        else if (p.y > height) { p.y = height; p.vy *= -1; }
 
         // Mouse interaction (repulsion & drawn connections)
         if (mouse.x != null && mouse.y != null) {
@@ -107,6 +110,10 @@ export default function ParticleNetwork({
              p.vx = p.vx * 0.99 + p.baseVx * 0.01;
              p.vy = p.vy * 0.99 + p.baseVy * 0.01;
           }
+        } else {
+             // If mouse leaves, gradually normalize velocity
+             p.vx = p.vx * 0.99 + p.baseVx * 0.01;
+             p.vy = p.vy * 0.99 + p.baseVy * 0.01;
         }
 
         // Draw particle dot itself
